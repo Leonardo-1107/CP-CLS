@@ -11,7 +11,8 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
 from monai.data import Dataset
 from monai.transforms import (
-    Compose, Resized, ToTensord
+    Compose, LoadImaged, Resized, RandFlipd, RandRotated, RandZoomd, RandGaussianNoised,
+    ToTensord
 )
 
 from monai.utils import set_determinism
@@ -97,7 +98,21 @@ class PhaseBalancedSampler(Sampler):
 
 
 train_transforms = Compose([
-    H5Loader(keys=["image"]),   
+    H5Loader(keys=["image"]),   # your custom HDF5 loader
+    Resized(keys=["image"], spatial_size=(args.resolution, args.resolution)),
+
+    # ---- Data augmentations ----
+    RandFlipd(keys=["image"], prob=0.2, spatial_axis=0),           # horizontal flip
+    RandFlipd(keys=["image"], prob=0.2, spatial_axis=1),           # vertical flip
+    RandRotated(keys=["image"], range_x=np.pi/12, prob=0.2),       # random rotation ±15°
+    RandZoomd(keys=["image"], min_zoom=0.9, max_zoom=1.1, prob=0.2), # slight zoom
+    RandGaussianNoised(keys=["image"], prob=0.15, mean=0.0, std=0.01), # mild noise
+
+    ToTensord(keys=["image"])
+])
+
+val_transforms = Compose([
+    H5Loader(keys=["image"]),
     Resized(keys=["image"], spatial_size=(args.resolution, args.resolution)),
     ToTensord(keys=["image"])
 ])
@@ -116,18 +131,25 @@ for label, cls in enumerate(sorted(os.listdir(root_dir))):
 full_ds = Dataset(data=data, transform=train_transforms)
 val_size = int(0.2 * len(full_ds))
 train_size = len(full_ds) - val_size
-train_ds, val_ds = random_split(full_ds, [train_size, val_size])
+train_subset, val_subset = random_split(full_ds, [train_size, val_size])
+
+# Wrap each subset with its transform
+train_ds = Dataset(data=train_subset.dataset.data, transform=train_transforms)
+val_ds   = Dataset(data=val_subset.dataset.data,   transform=val_transforms)
+
+
+
 
 # use user-difined sampler
 train_sampler = DistributedSampler(train_ds, shuffle=True,  drop_last=True)
 val_sampler   = DistributedSampler(val_ds,   shuffle=False, drop_last=False)
 train_loader = DataLoader(
     train_ds, batch_size=args.batch_size, sampler=train_sampler,
-    num_workers=2, pin_memory=True, drop_last=True, persistent_workers=False
+    num_workers=4, pin_memory=True, drop_last=True, persistent_workers=False
 )
 val_loader = DataLoader(
     val_ds, batch_size=args.batch_size, sampler=val_sampler,
-    num_workers=2, pin_memory=True, drop_last=False, persistent_workers=False
+    num_workers=4, pin_memory=True, drop_last=True, persistent_workers=False
 )
 
 # -----------------------------------------------------
@@ -180,7 +202,7 @@ for epoch in range(num_epochs):
                 unit="batch", disable=(dist.get_rank() != 0))
 
     for batch in pbar:
-        global_step += 1
+        
         inputs = batch["image"].to(device, non_blocking=True)
         labels = torch.as_tensor(batch["label"]).long().squeeze().to(device, non_blocking=True)
 
@@ -214,7 +236,7 @@ for epoch in range(num_epochs):
                     val_labels = torch.as_tensor(val_batch["label"]).long().squeeze().to(device, non_blocking=True)
                     val_outputs = model(val_inputs)
                     preds = torch.argmax(val_outputs, dim=1)
-
+                    
                     local_preds.extend(preds.cpu().tolist())
                     local_labels.extend(val_labels.cpu().tolist())
 
@@ -245,7 +267,9 @@ for epoch in range(num_epochs):
 
             dist.barrier()       # sync before returning to train
             model.train()
+        
 
+        global_step += 1
 
 
 if dist.get_rank() == 0:

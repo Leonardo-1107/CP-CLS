@@ -1,8 +1,7 @@
 export DATA_DIR="/projects/bodymaps/Data/image_only/AbdomenAtlasPro/AbdomenAtlasPro"
 export CHECKPOINT="./models/best_model_89_smile.pth"   
-export CSV="./input_folder/UCSF-Test-Normal-Pancreas.csv"
+export CSV="./input_folder/UCSF_xinze_solid.csv"
 
-CUDA_VISIBLE_DEVICES=0,1,2,3 \
 python -m src.inference \
   --data_dir $DATA_DIR \
   --num_classes 4 \

@@ -2,3 +2,6 @@ dataset
 input_folder
 input_folder_trimmed
 logs
+inference_csv_base.sh
+backup
+.gitignore

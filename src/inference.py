@@ -108,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint_path", type=str)
     parser.add_argument("--num_classes", type=int, default=4)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--slice_num", type=int, default=8)
+    parser.add_argument("--slice_num", type=int, default=7)
     parser.add_argument("--csv_reference_path", type=str)
     parser.add_argument("--test_mode", action='store_true')
     parser.add_argument("--multi_gpu", action='store_true')
@@ -188,15 +188,18 @@ if __name__ == "__main__":
             df = pd.read_csv(args.csv_reference_path)
             pred_dict = {}
             for bid in tqdm(df["bdmap_id"], desc="CSV inference..."):
-                ct_path = os.path.join(args.data_dir, bid, "ct.nii.gz")
-                if not os.path.exists(ct_path):
-                    print(f"Missing: {ct_path}")
+                try:
+                    ct_path = os.path.join(args.data_dir, bid, "ct.nii.gz")
+                    if not os.path.exists(ct_path):
+                        print(f"Missing: {ct_path}")
+                        continue
+                    ds = CLSInferenceDataset(ct_path, slice_num=args.slice_num)
+                    dl = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=4)
+                    y_pred, _ = predict_scan(model, dl, device)
+                    phase_pred = id_to_phase[y_pred]
+                    pred_dict[bid] = phase_pred
+                except:
                     continue
-                ds = CLSInferenceDataset(ct_path, slice_num=args.slice_num)
-                dl = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=4)
-                y_pred, _ = predict_scan(model, dl, device)
-                phase_pred = id_to_phase[y_pred]
-                pred_dict[bid] = phase_pred
 
             save_path = args.csv_reference_path.replace('.csv', '_phase_pred.csv')
             pd.DataFrame({"bdmap_id": list(pred_dict.keys()), "Phase Label": list(pred_dict.values())}).to_csv(save_path, index=False)
