@@ -23,7 +23,7 @@ from sklearn.metrics import confusion_matrix, accuracy_score, classification_rep
 from monai.networks.nets import DenseNet121
 from torch.utils.data import Sampler
 
-from dataset.dataset import CLSInferenceDataset, label_mapping
+from src.dataset import CLSInferenceDataset, label_mapping
 from collections import OrderedDict
 
 import matplotlib.pyplot as plt

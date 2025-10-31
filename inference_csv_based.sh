@@ -1,6 +1,6 @@
 export DATA_DIR="/projects/bodymaps/Data/image_only/AbdomenAtlasPro/AbdomenAtlasPro"
-export CHECKPOINT="./models/best_model_89_smile.pth"   
-export CSV="./input_folder/UCSF_xinze_solid.csv"
+export CHECKPOINT="./models/best_model_99_smile.pth"   
+export CSV="./input_folder/UCSF_88K_Test_Set_v2_sampled3000.csv"
 
 python -m src.inference \
   --data_dir $DATA_DIR \

@@ -4,7 +4,7 @@
 
 This script performs CT phase classification using a pre-trained DenseNet121 model (from MONAI). It supports both **testing with labeled data** and **inference on unlabeled CT scans or CSV-listed datasets**.
 
-2026 CVPR SMILE backbone jliu452@jh.edu.
+2026 CVPR SMILE backbone.
 
 ---
 
@@ -13,7 +13,7 @@ This script performs CT phase classification using a pre-trained DenseNet121 mod
     
     (1) GPU minimum requirement: RTX 3050+, VRAM > 8GB.
     (2) Light local storage and CPU occupation.
-    (3) model.pth size: 0.54 MB.
+    (3) model.pth size: ~ 3 MB.
 
 
 <details>
